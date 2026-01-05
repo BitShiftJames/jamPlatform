@@ -11,7 +11,8 @@ endif()
 
 if (LINUX)
   message("Building for linux...")
-  list(APPEND platform_sources ${PLATFORM_PATH}/platform_linux.cpp)
+  list(APPEND platform_sources ${PLATFORM_PATH}/platform_linux.cpp 
+    ${PLATFORM_PATH}/wayland/wayland_client.cpp)
 endif()
 
 if (APPLE)
@@ -19,7 +20,8 @@ if (APPLE)
   list(APPEND platform_sources ${PLATFORM_PATH}/platform_apple.cpp)
 endif()
 
-add_library(jamPlatform ${platform_sources})
+add_library(jamPlatform STATIC ${platform_sources})
+
 set_target_properties(jamPlatform PROPERTIES
   PREFIX ""
   LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/src/
