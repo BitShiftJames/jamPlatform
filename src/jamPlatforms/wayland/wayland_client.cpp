@@ -250,23 +250,6 @@ void unhandled_opcode(wayland_windowState *state, uint32_t remaining_bytes, char
     buf_read_n(msg, msg_len, 0, remaining_bytes);
   }
   
-  printf("\nHeader: object_id %u, opcode: %u, announced_size: %u\n", object_id, opcode, announced_size);
-  for (uint32_t Index = 0; Index < remaining_bytes; Index++) {
-    if (Index == 0) {
-      printf("Msg: ");
-    }
-    printf("%02x", state->error_message[Index]);
-
-    if (Index == remaining_bytes - 1) {
-      printf("\n");
-      return;
-    }
-
-    if ((Index + 1) % 8 == 0) {
-      printf("\nMsg: ");
-    }
-
-  }
 }
 
 void wayland_wl_surface_commit(wayland_windowState *windowState) {
@@ -418,7 +401,7 @@ int wayland_wl_shm_pool_create_buffer(wayland_windowState *windowState) {
   buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, 0);
   buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->Width);
   buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->Height);
-  buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->stride);
+  buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->Width * COLOR_CHANNELS);
   buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, 1);
 
   SendMessage(windowState);
@@ -500,10 +483,12 @@ void wayland_window_set_up(wayland_windowState *state) {
 
 void wayland_listen_to_events(wayland_windowState *state, char **msg, uint64_t *msg_len) {
   assert(*msg_len >= 0);
-
+  
   uint32_t object_id = buf_read_u32(msg, msg_len);
   uint16_t opcode = buf_read_u16(msg, msg_len);
   uint16_t announced_size = buf_read_u16(msg, msg_len);
+
+  printf("OBJ_ID: %u, OPCODE: %u, SIZE: %u\n", object_id, opcode, announced_size);
   assert(roundup_4(announced_size) <= announced_size);
 
   uint32_t header_size = sizeof(object_id) + sizeof(opcode) + sizeof(announced_size);
@@ -564,12 +549,29 @@ void wayland_listen_to_events(wayland_windowState *state, char **msg, uint64_t *
 
       }
 
+      char wl_output_interface[] = "wl_ouput";
+      if (strcmp(wl_compositor_interface, buffer) == 0) {
+        state->wl_output_id = wayland_wl_registry_bind(state, name, buffer, interface_len, version_number);
+        printf("Action: Registry.bind@%u Interface bound %s@%u\n", state->wl_registry_id, wl_output_interface, state->wl_output_id);
+
+      }
 
 
     } else {
       unhandled_opcode(state, bytes_to_read_out, msg, msg_len, opcode, announced_size, object_id);
     }
 
+  } else if (object_id == state->wl_output_id) {
+    if (state->opcodes.wl_output.MODE == opcode) {
+      uint32_t flags = buf_read_u32(msg, msg_len);
+      uint32_t width = buf_read_u32(msg, msg_len);
+      uint32_t height = buf_read_u32(msg, msg_len);
+      uint32_t refresh = buf_read_u32(msg, msg_len);
+
+      printf("Screen Width: %u, Screen Height: %u, Refressh Rate: %u\n", width, height, refresh);
+    } else {
+      unhandled_opcode(state, bytes_to_read_out, msg, msg_len, opcode, announced_size, object_id);
+    }
   } else if (object_id == state->wl_shm_id) {
     printf("Event recieved from wl_shm \n");
     if (state->opcodes.wl_shm.WL_SHM_FORMAT_EVENT == opcode) {

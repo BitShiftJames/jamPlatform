@@ -106,6 +106,21 @@ struct WL_COMPOSITOR {
   };
 };
 
+struct WL_OUTPUT {
+  enum Methods {
+    RELEASE = 0,
+  };
+
+  enum Events {
+    GEOMETRY = 0,
+    MODE = 1,
+    DONE = 2,
+    SCALE = 3,
+    NAME = 4,
+    DESCRIPTION = 5,
+  };
+};
+
 struct WL_SURFACE {
   enum Methods {
     DESTROY=0,
@@ -190,6 +205,7 @@ struct OP_CODES {
   WL_SHM_POOL wl_shm_poo;
   WL_SURFACE wl_surface;
   WL_COMPOSITOR wl_compositor;
+  WL_OUTPUT wl_output;
   XDG_WM_BASE xdg_wm_base;
   XDG_SURFACE xdg_surface;
   XDG_TOPLEVEL xdg_toplevel;
@@ -228,6 +244,7 @@ struct wayland_windowState {
   uint32_t wl_compositor_id;
   uint32_t wl_surface_id;
   uint32_t xdg_toplevel_id;
+  uint32_t wl_output_id;
   uint32_t callback_id;
 
   // Pixel Buffer Information;
@@ -271,7 +288,6 @@ inline void SendMessage(wayland_windowState *state) {
 }
 
 inline void PrintBoundInterfaces(wayland_windowState *state) {
-
   printf("wl_display: %u\n", state->wl_display_id);
   printf("wl_registry: %u\n", state->wl_registry_id);
   printf("wl_shm: %u\n", state->wl_shm_id);

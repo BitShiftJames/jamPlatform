@@ -1,12 +1,10 @@
 #ifndef JAMPLATFORM_H
 #define JAMPLATFORM_H 
 
-#include <cstdio>
 #define roundup_4(n) (((n) + 3) & -4)
 
-#include <cassert>
-#include <cstddef>
-#include <cstring>
+#include <assert.h>
+#include <string.h>
 #include <stdint.h>
 
 void create_a_window(void **memory, uint32_t Width, uint32_t Height);
@@ -48,6 +46,17 @@ inline uint32_t buf_read_u32(char **buffer, uint64_t *buffer_pos) {
  assert((size_t)*buffer % sizeof(uint32_t) == 0);
 
  uint32_t res = *(uint32_t *)(*buffer);
+ *buffer += sizeof(res);
+ *buffer_pos -= sizeof(res);
+
+ return res;
+}
+
+inline int32_t buf_read_s32(char **buffer, uint64_t *buffer_pos) {
+ assert(*buffer_pos >= sizeof(uint32_t));
+ assert((size_t)*buffer % sizeof(uint32_t) == 0);
+
+ int32_t res = *(int32_t *)(*buffer);
  *buffer += sizeof(res);
  *buffer_pos -= sizeof(res);
 

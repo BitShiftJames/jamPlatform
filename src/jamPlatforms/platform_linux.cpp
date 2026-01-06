@@ -24,16 +24,11 @@
 #include "wayland/wayland_client.h"
 
 void create_a_window(void **memory, uint32_t Width, uint32_t Height) {
+
   // FIXME: Query x11 or wayland.
+  // Then allocate a windowState object.
   *memory = malloc(sizeof(wayland_windowState));
   wayland_windowState *windowState = ((wayland_windowState *)*memory);
-  
-  windowState->Width = Width;
-  windowState->Height = Height;
-  windowState->stride = Width * COLOR_CHANNELS;
-  
-  windowState->shm_pool_size = windowState->Height * windowState->stride;
-  windowState->shm_pool_data = (uint8_t *)mmap(NULL, windowState->shm_pool_size, PROT_READ | PROT_WRITE, MAP_SHARED, windowState->shm_fd, 0);
   
   if (connect_wayland_display(windowState)) {
     wayland_wl_display_get_registry(windowState);
@@ -48,20 +43,9 @@ void create_a_window(void **memory, uint32_t Width, uint32_t Height) {
 
       char *msg = read_buf;
       uint64_t msg_len = (uint64_t)read_bytes;
-      
+
       int count;
 
-      for (uint32_t Index = 0; Index < msg_len; Index++) {
-        if (Index == 0) {
-          printf("\n Msg: ");
-        }
-        printf("%02x ", msg[Index]);
-        if ((Index + 1) % 8 == 0) {
-          printf("\n Msg: ");
-        }
-      }
-      printf("\n");
-    
       while (msg_len > 0) {
         wayland_listen_to_events(windowState, &msg, &msg_len);
       }
