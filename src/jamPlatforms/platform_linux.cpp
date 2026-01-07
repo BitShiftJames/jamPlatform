@@ -53,7 +53,6 @@ void create_a_window(void **memory, uint32_t Width, uint32_t Height) {
       wayland_window_set_up(windowState);
 
       fflush(stdout);   
-      sleep(1);
 
     }
   }
