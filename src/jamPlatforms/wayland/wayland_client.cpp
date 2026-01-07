@@ -269,7 +269,7 @@ void wayland_wl_surface_commit(wayland_windowState *windowState) {
   SendMessage(windowState);
 }
 
-int wayland_wl_shm_create_pool(wayland_windowState *windowState) {
+void wayland_wl_shm_create_pool(wayland_windowState *windowState) {
   assert(windowState->shm_pool_size != 0);
   assert(windowState->fd != 0);
 
@@ -278,12 +278,14 @@ int wayland_wl_shm_create_pool(wayland_windowState *windowState) {
   assert(windowState->message_pos == 0);
 
   // New ID.
-  ++windowState->current_obj_id;
-  uint32_t new_id = windowState->current_obj_id;
+  if (windowState->wl_shm_pool_id == 0) {
+    ++windowState->current_obj_id;
+    windowState->wl_shm_pool_id = windowState->current_obj_id;
+  }
 
   // Sizing.
   uint16_t msg_announced_size = WAYLAND_HEADER_SIZE+
-                             sizeof(new_id) +
+                             sizeof(windowState->wl_shm_pool_id) +
                              sizeof(windowState->shm_pool_size);
   assert(roundup_4(msg_announced_size) == msg_announced_size);
 
@@ -293,7 +295,7 @@ int wayland_wl_shm_create_pool(wayland_windowState *windowState) {
   buf_write_u16(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, msg_announced_size);
 
   // Args
-  buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, new_id);
+  buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->wl_shm_pool_id);
   buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->shm_pool_size);
   assert(roundup_4(windowState->message_pos) == windowState->message_pos);
 
@@ -321,36 +323,46 @@ int wayland_wl_shm_create_pool(wayland_windowState *windowState) {
     exit(errno);
   }
 
-  printf("\n-> wl_shm@%u.create_pool: wl_shm_pool=%u\n", windowState->wl_shm_id, new_id);
-
-  return new_id;
 }
 
-int wayland_wl_display_sync(wayland_windowState *windowState) {
+void wayland_wl_surface_frame(wayland_windowState *windowState) {
 
   ClearMessageBuffer(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE);
   // Make sure it is cleared.
   assert(windowState->message_pos == 0);
 
   // New ID.
-  ++windowState->current_obj_id;
-  uint32_t new_id = windowState->current_obj_id;
+  if (windowState->frame_callback_id == 0) {
+    ++windowState->current_obj_id;
+    windowState->frame_callback_id = windowState->current_obj_id;
+    printf("Creating a frame callback ID\n");
+    printf("Creating a frame callback ID\n");
+    printf("Creating a frame callback ID\n");
+    printf("Creating a frame callback ID\n");
+    printf("Creating a frame callback ID\n");
+    printf("Creating a frame callback ID\n");
+    printf("Creating a frame callback ID\n");
+  } else {
+    printf("Frame callback is %u\n", windowState->frame_callback_id);
+  }
 
   // Sizing.
-  uint16_t msg_announced_size = WAYLAND_HEADER_SIZE + sizeof(new_id);
+  uint16_t msg_announced_size = WAYLAND_HEADER_SIZE + sizeof(windowState->frame_callback_id);
   assert(roundup_4(msg_announced_size) == msg_announced_size);
 
   // Header
-  buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->wl_display_id);
-  buf_write_u16(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->opcodes.wl_display.SYNC);
+  buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->wl_surface_id);
+  buf_write_u16(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->opcodes.wl_surface.FRAME);
   buf_write_u16(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, msg_announced_size);
 
-  buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, new_id);
+  // Args.
+  buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->frame_callback_id);
   
   SendMessage(windowState);
 
-  return new_id;
+  printf("Asking for frame hinting\n");
 }
+
 void wayland_wl_surface_attach(wayland_windowState *windowState) {
   ClearMessageBuffer(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE);
   // Make sure it is cleared.
@@ -375,6 +387,29 @@ void wayland_wl_surface_attach(wayland_windowState *windowState) {
   
 }
 
+void wayland_wl_surface_damage(wayland_windowState *windowState) {
+  ClearMessageBuffer(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE);
+  // Make sure it is cleared.
+  assert(windowState->message_pos == 0);
+
+  // Sizing.
+  uint16_t msg_announced_size = WAYLAND_HEADER_SIZE + sizeof(uint32_t) * 4;
+  assert(roundup_4(msg_announced_size) == msg_announced_size);
+
+  // Header.
+  buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->wl_surface_id);
+  buf_write_u16(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->opcodes.wl_surface.DAMAGE);
+  buf_write_u16(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, msg_announced_size);
+  
+  // Args.
+  buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, 0);
+  buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, 0);
+  buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->Width);
+  buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->Height);
+
+  SendMessage(windowState);
+}
+
 int wayland_wl_shm_pool_create_buffer(wayland_windowState *windowState) {
   ClearMessageBuffer(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE);
   // Make sure it is cleared.
@@ -391,7 +426,7 @@ int wayland_wl_shm_pool_create_buffer(wayland_windowState *windowState) {
 
   // Header
   buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->wl_shm_pool_id);
-  buf_write_u16(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->opcodes.wl_shm_poo.CREATE_BUFFER);
+  buf_write_u16(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->opcodes.wl_shm_pool.CREATE_BUFFER);
   buf_write_u16(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, msg_announced_size);
   // Args
   
@@ -407,6 +442,42 @@ int wayland_wl_shm_pool_create_buffer(wayland_windowState *windowState) {
   SendMessage(windowState);
 
   return new_id;
+}
+
+void wayland_wl_shm_pool_destroy(wayland_windowState *windowState) {
+  ClearMessageBuffer(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE);
+  // Make sure it is cleared.
+  assert(windowState->message_pos == 0);
+
+  // Sizing
+  uint16_t msg_announced_size = WAYLAND_HEADER_SIZE; 
+  assert(roundup_4(msg_announced_size) == msg_announced_size);
+
+  // Header 
+  buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->wl_shm_pool_id);
+  buf_write_u16(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->opcodes.wl_shm_pool.DESTROY);
+  buf_write_u16(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, msg_announced_size);
+
+  SendMessage(windowState);
+}
+
+void wayland_wl_buffer_destroy(wayland_windowState *windowState) {
+
+  ClearMessageBuffer(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE);
+  // Make sure it is cleared.
+  assert(windowState->message_pos == 0);
+
+  // Sizing
+  uint16_t msg_announced_size = WAYLAND_HEADER_SIZE; 
+  assert(roundup_4(msg_announced_size) == msg_announced_size);
+
+  // Header 
+  buf_write_u32(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->wl_buffer_id);
+  buf_write_u16(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, windowState->opcodes.wl_buffer.DESTROY);
+  buf_write_u16(windowState->message, &windowState->message_pos, MAX_MESSAGE_SIZE, msg_announced_size);
+
+  SendMessage(windowState);
+
 }
 
 void wayland_xdg_surface_ack_configure(wayland_windowState *windowState, uint32_t configure) {
@@ -450,7 +521,6 @@ void wayland_window_set_up(wayland_windowState *state) {
       state->wl_shm_id != 0 &&
       state->wl_shm_pool_id == 0) {
 
-
     int fd = memfd_create("wayland_shared_memory", MFD_CLOEXEC);
 
     uint32_t size = state->stride * state->Height;
@@ -467,17 +537,20 @@ void wayland_window_set_up(wayland_windowState *state) {
     if (state->shm_pool_data != 0 &&
         state->shm_pool_size > 0) {
 
-      state->wl_shm_pool_id = wayland_wl_shm_create_pool(state);
+      wayland_wl_shm_create_pool(state);
       state->wl_buffer_id = wayland_wl_shm_pool_create_buffer(state);
+      wayland_wl_shm_pool_destroy(state);
 
       memset(state->shm_pool_data, 0xFF0000FF, state->shm_pool_size); 
 
       wayland_wl_surface_attach(state);
+      wayland_wl_surface_frame(state);
       wayland_wl_surface_commit(state);
 
     }
   }
 
+  state->blue++;
 }
 
 
@@ -624,12 +697,8 @@ void wayland_listen_to_events(wayland_windowState *state, char **msg, uint64_t *
       wayland_xdg_wm_base_pong(state, ping_serial);
       printf("PONG \n");
       
-    }
-    switch (opcode) {
-      default: {
+    } else {
       unhandled_opcode(state, bytes_to_read_out, msg, msg_len, opcode, announced_size, object_id);
-      } break;
-    
     }
   } else if (object_id == state->xdg_surface_id) {
     printf("Event recieved from xdg_surface ");
@@ -687,11 +756,48 @@ void wayland_listen_to_events(wayland_windowState *state, char **msg, uint64_t *
     } else {
       unhandled_opcode(state, bytes_to_read_out, msg, msg_len, opcode, announced_size, object_id);
     }
-  } else if (object_id == state->callback_id) {
-    if (opcode == 0) {
-      printf("Response from server");
-      state->callback_id = 0;
+  } else if (object_id == state->frame_callback_id) {
+    uint32_t current_time = buf_read_u32(msg, msg_len);
+    printf("Current_time %u\n", current_time);
+    wayland_wl_surface_frame(state);
+
+    int fd = memfd_create("wayland_shared_memory", MFD_CLOEXEC);
+
+    uint32_t size = state->stride * state->Height;
+    printf("Size %u\n", size);
+    if (ftruncate(fd, size) == -1) {
+      printf("failed to truncate memory file\n");
+      exit(errno);
     }
+
+    munmap(state->shm_pool_data, state->shm_pool_size);
+
+    state->shm_pool_data = (uint8_t *)mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    state->shm_pool_size = size;
+    state->shm_fd = fd;
+    
+    if (state->shm_pool_data != 0 &&
+        state->shm_pool_size > 0) {
+
+      wayland_wl_shm_create_pool(state);
+      state->wl_buffer_id = wayland_wl_shm_pool_create_buffer(state);
+      wayland_wl_shm_pool_destroy(state);
+
+      uint32_t *pixels = (uint32_t *)state->shm_pool_data;
+      for (uint32_t Index = 0; Index < state->Width * state->Height; Index++) {
+        uint8_t r = state->blue;
+        uint8_t b = state->blue;
+        uint8_t g = state->blue;
+        uint8_t a = 0xff;
+        pixels[Index] = a << 24 | r << 16 | g << 8 | b;
+      }
+
+      wayland_wl_surface_attach(state);
+      wayland_wl_surface_damage(state);
+      wayland_wl_surface_commit(state);
+
+    }
+
   } else {
     printf("Unkown object id.");
   }

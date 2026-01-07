@@ -87,11 +87,11 @@ struct WL_SHM_POOL {
 
 struct WL_BUFFER {
   enum Methods {
-    DESTORY=0,
+    DESTROY=0,
   };
 
   enum Events {
-    DESTORY_EVENT=0 
+    DESTROY_EVENT=0 
   };
 };
 
@@ -202,7 +202,7 @@ struct OP_CODES {
   WL_REGISTERY wl_registery;
   WL_BUFFER wl_buffer;
   WL_SHM wl_shm;
-  WL_SHM_POOL wl_shm_poo;
+  WL_SHM_POOL wl_shm_pool;
   WL_SURFACE wl_surface;
   WL_COMPOSITOR wl_compositor;
   WL_OUTPUT wl_output;
@@ -216,6 +216,11 @@ enum window_stage {
   STATE_PAUSED,
   STATE_SURFACE_ACKED_CONFIGURE,
   STATE_SURFACE_ATTACHED,
+};
+
+struct wayland_object {
+  uint32_t id;
+  bool Alive;
 };
 
 struct wayland_windowState {
@@ -237,27 +242,35 @@ struct wayland_windowState {
   uint32_t wl_display_id; 
   uint32_t wl_registry_id;
   uint32_t wl_shm_id;
-  uint32_t wl_shm_pool_id;
-  uint32_t wl_buffer_id;
+
   uint32_t xdg_wm_base_id;
   uint32_t xdg_surface_id;
   uint32_t wl_compositor_id;
   uint32_t wl_surface_id;
   uint32_t xdg_toplevel_id;
   uint32_t wl_output_id;
-  uint32_t callback_id;
+  uint32_t frame_callback_id;
+  
+  uint8_t blue;
+
+  uint32_t wl_shm_pool_id;
+  uint32_t wl_buffer_id;
 
   // Pixel Buffer Information;
   uint32_t Width;
   uint32_t Height;
   uint32_t stride;
   
+  uint32_t ScreenHeight;
+  uint32_t ScreenWidth;
+
   uint32_t configure_serial;
   // Shared memory object
   int shm_fd;
   uint32_t shm_pool_size;
   uint8_t *shm_pool_data;
-
+  
+  bool drawOnce;
   
   int count;
 };
@@ -318,11 +331,11 @@ int wayland_wl_compositor_create_surface(wayland_windowState *windowState);
 int wayland_wl_registry_bind(wayland_windowState *windowState, uint32_t name, char *interface, uint32_t interface_len, uint32_t version);
 int wayland_xdg_wm_base_get_xdg_surface(wayland_windowState *windowState);
 int wayland_xdg_surface_get_toplevel(wayland_windowState *windowState);
+void wayland_wl_shm_create_pool(wayland_windowState *windowState);
+int wayland_wl_shm_pool_create_buffer(wayland_windowState *windowState);
 
 
 // Not Done
-int wayland_wl_shm_create_pool(wayland_windowState *windowState);
-int wayland_wl_shm_pool_create_buffer(wayland_windowState *windowState);
 void wayland_xdg_surface_ack_configure(wayland_windowState *windowState, uint32_t configure);
 void wayland_xdg_toplevel_setid(wayland_windowState *windowState, char *string);
 void wayland_wl_surface_commit(wayland_windowState *windowState);
